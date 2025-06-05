@@ -1,0 +1,60 @@
+# Node.js with React
+# Build a Node.js project that uses React.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
+
+trigger:
+- Deployed-Azure
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+- task: NodeTool@0
+  inputs:
+    versionSpec: '20.x'
+  displayName: 'Install Node.js'
+
+- script: |
+    # Delete vite.config.js if it exists
+    rm -f frontend/vite.config.js
+    # Rename vite.config2.js to vite.config.js
+    mv frontend/vite.config2.js frontend/vite.config.js
+  displayName: 'Update Vite Config'
+
+- task: Npm@1
+  displayName: 'install modules in /frontend'
+  inputs:
+    command: 'install'
+    workingDir: 'frontend'
+
+- script: |
+    rm -rf backend/node_modules
+    rm -f backend/package-lock.json
+  displayName: 'Clean backend dependencies'
+
+- task: Npm@1
+  displayName: 'install modules in /backend'
+  inputs:
+    command: 'install'
+    workingDir: 'backend'
+
+- task: Npm@1
+  displayName: 'building modules in /frontend'
+  inputs:
+    command: 'custom'
+    workingDir: 'frontend'
+    customCommand: 'run build'
+    
+- task: CopyFiles@2
+  inputs:
+    Contents: |
+      frontend/dist/**
+      backend/**
+    TargetFolder: $(Build.ArtifactStagingDirectory)
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'release'
+    publishLocation: 'Container'
